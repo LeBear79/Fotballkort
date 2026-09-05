@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kortlager v1.3.1</title>
+<title>Kortlager v1.4.0</title>
 <style>
 :root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#68737d;--line:#dfe4e8;--accent:#1769aa;--danger:#b42318;--ok:#137333;--nav:#14213d}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -26,7 +26,7 @@ table{width:100%;border-collapse:collapse;min-width:720px} th,td{text-align:left
 </style>
 </head>
 <body>
-<header><h1>⚽ Kortlager <span style="font-weight:400">v1.3.1</span></h1><small>Duplikater, kjøpersøk, mangelliste og egne samlinger med korttyper.</small></header>
+<header><h1>⚽ Kortlager <span style="font-weight:400">v1.4.0</span></h1><small>Duplikater, kjøpersøk, mangelliste og egne samlinger med korttyper.</small></header>
 <nav>
 <button data-page="lager" class="active">Kortlager</button>
 <button data-page="registrer">Registrer kort</button>
@@ -40,6 +40,7 @@ table{width:100%;border-collapse:collapse;min-width:720px} th,td{text-align:left
 <div class="summary panel"><div class="stat"><span class="muted">Ulike kort</span><b id="sUnique">0</b></div><div class="stat"><span class="muted">Kort på lager</span><b id="sQty">0</b></div><div class="stat"><span class="muted">Lagerverdi</span><b id="sValue">0 kr</b></div><div class="stat"><span class="muted">Solgt</span><b id="sSold">0</b></div></div>
 <div class="panel"><h2>Kortlager</h2><div class="grid3"><div><label>Søk</label><input id="search" placeholder="Spiller, kortnummer …"></div><div><label>Samling</label><select id="filterCollection"></select></div><div><label>Korttype</label><select id="filterType"></select></div></div>
 <p class="hint">Kortene sorteres automatisk etter samling og kortnummer i stigende rekkefølge.</p>
+<div class="actions"><button type="button" id="printList" class="primary">Skriv ut / Lag PDF</button></div>
 <div class="tablewrap"><table><thead><tr><th>#</th><th>Spiller</th><th>Samling</th><th>Type</th><th>Status</th><th>Antall</th><th>Pris</th><th>Handling</th></tr></thead><tbody id="stockBody"></tbody></table></div></div>
 </section>
 
@@ -61,7 +62,10 @@ table{width:100%;border-collapse:collapse;min-width:720px} th,td{text-align:left
 <section id="solgt" class="page hidden"><div class="panel"><h2>Solgte kort</h2><div class="tablewrap"><table><thead><tr><th>Dato</th><th>Kjøper</th><th>#</th><th>Spiller</th><th>Samling</th><th>Type</th><th>Antall</th><th>Pris</th></tr></thead><tbody id="soldBody"></tbody></table></div></div></section>
 
 <section id="oppsett" class="page hidden"><div class="panel"><h2>Registreringsmodus</h2><p class="hint">Opprett samlinger og legg inn korttypene som finnes i hver samling. Korttypene lagres automatisk og vises i rullegardinmenyen når du registrerer kort.</p>
-<form id="collectionForm"><div class="grid"><div><label>Ny samling</label><input id="newCollection" placeholder="F.eks. Panini VM 2026" required></div><div style="align-self:end"><button class="primary">Opprett samling</button></div></div></form></div><div class="panel"><h2>Mine samlinger</h2><div id="collectionAdmin"></div></div></section>
+<form id="collectionForm"><div class="grid"><div><label>Ny samling</label><input id="newCollection" placeholder="F.eks. Panini VM 2026" required></div><div style="align-self:end"><button class="primary">Opprett samling</button></div></div></form></div>
+<div class="panel"><h2>Mine samlinger</h2><div id="collectionAdmin"></div></div>
+<div class="panel"><h2>Sikkerhetskopi</h2><p class="hint">Sikkerhetskopien inneholder kortlager, samlinger, korttyper og standardpriser, mangelliste og solgte kort.</p>
+<div class="actions"><button type="button" id="exportBackup" class="primary">Last ned sikkerhetskopi</button><button type="button" id="importBackupBtn">Importer sikkerhetskopi</button><input type="file" id="importBackupFile" accept=".json,application/json" class="hidden"></div></div></section>
 </main>
 <script>
 const KEY='kortlager_v1_cards',SOLD='kortlager_v1_sold',MISSING='kortlager_v1_missing',COLKEY='kortlager_v12_collections';
@@ -98,10 +102,14 @@ function renderAll(){
  filterCollection.innerHTML=opts('Alle samlinger',fc);matchCollection.innerHTML=opts('Søk i alle samlinger',mc);missingCollection.innerHTML=opts('Velg samling',msc);
  renderStock();renderMissing();renderSold();renderCollections();
 }
+function filteredCards(){
+ let q=search.value.toLowerCase(),col=filterCollection.value;
+ return cards.filter(c=>(!q||[c.player,c.number,c.collection,c.type,c.note,c.dialogWith].join(' ').toLowerCase().includes(q))&&(!col||c.collection===col)&&(!filterType.value||c.type===filterType.value)).slice().sort(cardSort);
+}
 function renderStock(){
- let q=search.value.toLowerCase(),col=filterCollection.value,old=filterType.value,ts=col?types(col):[...new Set(collections.flatMap(c=>c.types))];
+ let col=filterCollection.value,old=filterType.value,ts=col?types(col):[...new Set(collections.flatMap(c=>c.types))];
  filterType.innerHTML='<option value="">Alle typer</option>'+ts.map(t=>`<option value="${esc(t)}" ${t===old?'selected':''}>${esc(t)}</option>`).join('');
- let list=cards.filter(c=>(!q||[c.player,c.number,c.collection,c.type,c.note,c.dialogWith].join(' ').toLowerCase().includes(q))&&(!col||c.collection===col)&&(!filterType.value||c.type===filterType.value)).slice().sort(cardSort);
+ let list=filteredCards();
  stockBody.innerHTML=list.length?list.map(c=>`<tr class="${c.status==='dialog'?'row-yellow':c.status==='reserved'?'row-red':''}"><td>${esc(c.number)}</td><td>${esc(c.player)}</td><td>${esc(c.collection)}</td><td>${esc(c.type)}</td><td><span class="dot ${c.status==='dialog'?'yellow':c.status==='reserved'?'red':'green'}"></span>${c.status==='dialog'?'Dialog':c.status==='reserved'?'Reservert':'Tilgjengelig'}</td><td>${c.qty}</td><td class="price">${money(effectivePrice(c))}</td><td><button onclick="editCard('${c.id}')">Endre</button> <button class="danger" onclick="delCard('${c.id}')">Slett</button></td></tr>`).join(''):'<tr><td colspan="8">Ingen kort funnet.</td></tr>';
 }
 search.oninput=renderStock;filterCollection.onchange=renderStock;filterType.onchange=renderStock;
@@ -146,6 +154,29 @@ function renameCol(id,n){n=n.trim();let c=collections.find(x=>x.id===id),old=c.n
 function addType(id){let c=collections.find(x=>x.id===id),i=$('t_'+id),t=i.value.trim(),pr=+$('tp_'+id).value||0;if(!t)return;if(c.types.some(x=>x.toLowerCase()===t.toLowerCase()))return alert('Korttypen finnes allerede.');c.types.push(t);c.typePrices=c.typePrices||{};c.typePrices[t]=pr;save();setTimeout(()=>{const el=$('t_'+id);if(el)el.focus()},0)}function setTypePrice(id,e,v){let c=collections.find(x=>x.id===id),t=decodeURIComponent(e);c.typePrices=c.typePrices||{};c.typePrices[t]=Math.max(0,+v||0);save()}
 function removeType(id,e){let c=collections.find(x=>x.id===id),t=decodeURIComponent(e);if(cards.some(x=>x.collection===c.name&&x.type===t))return alert('Korttypen brukes av registrerte kort og kan ikke slettes ennå.');if(confirm('Fjerne '+t+'?')){c.types=c.types.filter(x=>x!==t);if(c.typePrices)delete c.typePrices[t];save()}}
 function deleteCol(id){let c=collections.find(x=>x.id===id);if(cards.some(x=>x.collection===c.name)||missing.some(x=>x.collection===c.name))return alert('Samlingen er i bruk og kan ikke slettes.');if(confirm('Slette '+c.name+'?')){collections=collections.filter(x=>x.id!==id);save()}}
+
+function printCardList(){
+ const list=filteredCards();if(!list.length)return alert('Det er ingen kort i listen som kan skrives ut.');
+ const info=[filterCollection.value?`Samling: ${esc(filterCollection.value)}`:'',filterType.value?`Korttype: ${esc(filterType.value)}`:'',search.value.trim()?`Søk: ${esc(search.value.trim())}`:''].filter(Boolean).join(' • ');
+ const rows=list.map(c=>`<tr><td>${esc(c.number)}</td><td>${esc(c.player)}</td><td>${esc(c.collection)}</td><td>${esc(c.type)}</td><td>${c.qty}</td><td>${money(effectivePrice(c))}</td></tr>`).join('');
+ const w=window.open('','_blank');if(!w)return alert('Tillat popup-vinduer og prøv igjen.');
+ w.document.write(`<!doctype html><html lang="no"><head><meta charset="utf-8"><title>Kortliste</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#111}h1{margin:0 0 6px}.meta{color:#555;margin-bottom:18px;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #ccc;padding:7px 5px;text-align:left}th{background:#f2f2f2}.foot{margin-top:16px;font-size:11px;color:#666}@media print{body{margin:12mm}}</style></head><body><h1>Kortliste</h1><div class="meta">${info||'Alle kort'} • ${list.length} ulike kort • ${list.reduce((a,c)=>a+(+c.qty||0),0)} kort totalt</div><table><thead><tr><th>#</th><th>Spiller</th><th>Samling</th><th>Type</th><th>Antall</th><th>Pris</th></tr></thead><tbody>${rows}</tbody></table><div class="foot">Laget fra Kortlager v1.4.0</div><script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);w.document.close();
+}
+printList.onclick=printCardList;
+exportBackup.onclick=()=>{
+ const data={app:'Kortlager',version:'1.4.0',created:new Date().toISOString(),cards,sold,missing,collections};
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a'),d=new Date(),p=n=>String(n).padStart(2,'0');
+ a.href=URL.createObjectURL(blob);a.download=`kortlager-sikkerhetskopi-${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+importBackupBtn.onclick=()=>importBackupFile.click();
+importBackupFile.onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{const d=JSON.parse(await f.text());if(!d||!Array.isArray(d.cards)||!Array.isArray(d.sold)||!Array.isArray(d.missing)||!Array.isArray(d.collections))throw Error('Filen er ikke en gyldig Kortlager-sikkerhetskopi.');
+ if(!confirm(`Importere sikkerhetskopien?\n\nDette erstatter innholdet som ligger i appen nå.\nKort: ${d.cards.length}\nSamlinger: ${d.collections.length}\n\nVil du fortsette?`))return;
+ cards=d.cards;sold=d.sold;missing=d.missing;collections=d.collections;save();fillRegister();fillMissingTypes();alert('Sikkerhetskopien er importert.');
+ }catch(err){alert('Kunne ikke importere sikkerhetskopien: '+err.message)}finally{e.target.value=''}
+};
+
 renderAll();fillRegister();fillMissingTypes();
 </script>
 </body>
