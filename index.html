@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kortlager v1.3.0</title>
+<title>Kortlager v1.3.1</title>
 <style>
 :root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#68737d;--line:#dfe4e8;--accent:#1769aa;--danger:#b42318;--ok:#137333;--nav:#14213d}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -26,7 +26,7 @@ table{width:100%;border-collapse:collapse;min-width:720px} th,td{text-align:left
 </style>
 </head>
 <body>
-<header><h1>⚽ Kortlager <span style="font-weight:400">v1.3.0</span></h1><small>Duplikater, kjøpersøk, mangelliste og egne samlinger med korttyper.</small></header>
+<header><h1>⚽ Kortlager <span style="font-weight:400">v1.3.1</span></h1><small>Duplikater, kjøpersøk, mangelliste og egne samlinger med korttyper.</small></header>
 <nav>
 <button data-page="lager" class="active">Kortlager</button>
 <button data-page="registrer">Registrer kort</button>
@@ -111,10 +111,10 @@ function submitCard(){
  if(!collection.value||!type.value){alert('Velg både samling og korttype.');return false}
  let o={id:editId.value||uid(),player:player.value.trim(),number:number.value.trim(),collection:collection.value,type:type.value,qty:+qty.value,price:+$('priceInput').value,discount:+discount.value,status:status.value,dialogWith:dialogWith.value.trim(),note:note.value.trim()};
  if(!editId.value){
-  let existing=cards.find(c=>c.collection===o.collection&&normCardNo(c.number)===normCardNo(o.number)&&c.type===o.type);
+  let existing=cards.find(c=>c.collection===o.collection&&normCardNo(c.number)===normCardNo(o.number));
   if(existing){
    let before=+existing.qty||0,add=Math.max(1,+o.qty||1);
-   if(confirm(`Dette kortet finnes allerede i kortlageret. Du har ${before} eksemplar${before===1?'':'er'} fra før. Vil du legge til ${add} til det eksisterende kortet?`)){
+   if(confirm(`Kortnummer ${o.number} finnes allerede i ${o.collection} (${existing.player || 'uten spillernavn'}, ${existing.type || 'uten korttype'}). Du har ${before} eksemplar${before===1?'':'er'} fra før. Vil du legge til ${add} til det eksisterende kortet?`)){
     existing.qty=before+add;save();prepareNext(o.collection,o.type);return true
    }
    return false
